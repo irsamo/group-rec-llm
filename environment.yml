@@ -1,0 +1,17 @@
+name: grouprec
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # compiled deps from conda-forge (keeps binaries compatible)
+  - pandas=2.2.2
+  - streamlit=1.39
+  - pyarrow=17
+  - scikit-surprise
+  - sentence-transformers
+  - faiss-cpu
+  # pure-Python via pip goes last
+  - pip
+  - pip:
+      - "openai>=1.0.0"
+      - "python-dotenv>=1.0.0"

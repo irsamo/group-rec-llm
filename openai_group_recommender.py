@@ -1,18 +1,17 @@
 import os
 import pandas as pd
 from openai import OpenAI
+from dotenv import load_dotenv; load_dotenv()
 
 def get_llm_recommendation(prompt):
     """
     Calls the OpenAI API to get a book recommendation based on a prompt.
     """
     try:
-        # Ensure the API key is set
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            return "Error: OPENAI_API_KEY environment variable not set."
+        if "OPENAI_API_KEY" not in os.environ:
+            return "Error: set the OPENAI_API_KEY environment variable (do not hardcode API keys)."
 
-        client = OpenAI(api_key=api_key)
+        client = OpenAI()
 
         response = client.chat.completions.create(
             model="gpt-4",

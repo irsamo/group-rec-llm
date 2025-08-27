@@ -151,3 +151,8 @@ cython_debug/
 # Data files
 *.csv
 *.pkl
+.env
+*.env
+.env.*
+.idea/
+.DS_Store
