@@ -22,44 +22,84 @@ An interactive Streamlit application runs a quantitative evaluation to test thes
 - **Model Persistence**: The trained CF model is saved to disk (`svd_model.pkl`) to avoid retraining on every run.
 - **Data**: Uses the well-known [Book-Crossing dataset](http://www2.informatik.uni-freiburg.de/~cziegler/BX/).
 
-## ⚙️ How to Run the Application
+## ✅ Requirements
 
-1.  **Set up the Environment**:
-    *   Ensure you have Python 3.8+ installed.
-    *   Create and activate a virtual environment:
-        ```bash
-        python3 -m venv .venv
-        source .venv/bin/activate
-        ```
-    *   Install the required packages:
-        ```bash
-        pip install pandas "numpy<2.0" scikit-surprise openai streamlit
-        ```
+- **Conda** (Anaconda / Miniforge / Mambaforge)
+- Internet access for Python packages and the OpenAI API
+- CSVs from the **Book-Crossing** dataset
 
-2.  **Set the OpenAI API Key**:
-    *   The LLM-based models require an OpenAI API key. Set it as an environment variable:
-        ```bash
-        export OPENAI_API_KEY="your_key_here"
-        ```
+> Python and packages are pinned in `environment.yml` (Python 3.11).
 
-3.  **Train the CF Model**:
-    *   If you haven't already, run the training script to generate the `svd_model.pkl` file. This only needs to be done once.
-        ```bash
-        python collaborative_filtering_bookcrossing.py
-        ```
+---
 
-4.  **Run the Streamlit App**:
-    *   Launch the interactive evaluation application:
-        ```bash
-        streamlit run app.py
-        ```
-    *   Open the provided URL in your browser, select a group recommendation strategy from the sidebar, and click "Run Evaluation Demo".
+## ⚙️ Setup
 
-## 📂 Files in this Repository
+### 1) Create/update the Conda environment
 
-- `app.py`: The main Streamlit application for evaluating the models.
-- `collaborative_filtering_bookcrossing.py`: A script to train the SVD collaborative filtering model and save it.
-- `README.md`: This file.
-- `.gitignore`: Specifies files to be ignored by Git (e.g., `.venv`, `__pycache__`).
+```bash
+# first time
+conda env create -f environment.yml
+conda activate grouprec
+
+# later, to sync with environment.yml (removes extras)
+conda activate grouprec
+conda env update --file environment.yml --prune
+```
+
+> Tip: keep your `pip:` section at the end of `environment.yml`. Packages listed there (e.g., `openai`, `python-dotenv`) are installed automatically when you create/update the env.
+
+---
+
+### 2) Configure the OpenAI API key (no keys in code)
+
+The OpenAI Python client reads your key from the environment variable ``.\
+**Never** paste real keys into code or docs.
+
+
+1. Create a file named `.env` in the project root:
+
+```
+OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>
+```
+
+2. Do **not** commit `.env`. (It is ignored by `.gitignore`.)
+
+3. The app loads it automatically via `python-dotenv` (already included in `environment.yml`).
+
+> If you want to switch models, you can add another env var, e.g. `OPENAI_MODEL=gpt-4o`, and read it in your code (optional).
+
+
+## ▶️ Run
+
+### Train the CF model once
+
+```bash
+python collaborative_filtering_bookcrossing.py
+```
+
+This builds and caches the SVD model so you don’t retrain on every run.
+
+### Launch the Streamlit app
+
+```bash
+streamlit run app.py
+# or:
+# python -m streamlit run app.py
+```
+ *   Open the provided URL in your browser, select a group recommendation strategy from the sidebar, and click "Run Evaluation Demo".
+
+## 🧩 Repository contents (key files)
+
+- `app.py` — Streamlit UI for comparing strategies and models.
+- `collaborative_filtering_bookcrossing.py` — trains / saves the SVD CF model.
+- `openai_group_recommender.py` — LLM wrapper (reads `OPENAI_API_KEY` from env).
+- `comparison_recommender.py` — evaluation/comparison routines.
+- `memory_store.py`, `seed_memory_from_dataset.py` — optional memory utilities.
+- `user_prefs_kv.json`, `user_prefs_meta.json`, `user_prefs.faiss` — cached preferences/embeddings (if used).
+- `environment.yml` — reproducible Conda environment (includes `python-dotenv`).
+- `.env` — **not committed**; put `OPENAI_API_KEY=<YOUR_OPENAI_API_KEY>` here for local runs.
+- `.gitignore` — ignores `.env`, `__pycache__/`, `.DS_Store`, IDE folders, etc.
+
+---
 
 *(Note: The `BX-Book-Ratings.csv` and `BX-Books.csv` data files are required to run the project but are not included in this repository).*
