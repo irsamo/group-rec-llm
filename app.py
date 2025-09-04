@@ -21,7 +21,8 @@ RNG_SEED = 42             # for reproducible splits
 LLM_MODEL = "gpt-4"          # or a newer model with a larger window, e.g., "gpt-4o"
 LLM_MAX_TOKENS = 512         # keep outputs short so more room for the prompt
 MAX_TITLES_FOR_LLM = 150     # cap how many candidate titles you show the LLM
-MAX_LIKES_PER_USER = 5       # cagit remote add fork https://github.com/irsamo/group-rec-llm.gitp how many "likes" per user you include
+MAX_LIKES_PER_USER = 5       # cap how many "likes" per user you include
+
 
 # --- App Configuration ---
 st.set_page_config(page_title="Recommender System Evaluation", layout="wide")
@@ -372,34 +373,26 @@ def create_llm_prompt(strategy, user_profiles, candidate_titles=[], n=10):
 
 # --- Evaluation Logic ---
 
-def find_ground_truth(ratings_df):
+def find_ground_truth(ratings_df: pd.DataFrame, group_size: int = 3):
     """
-    Finds a ground truth test case by first finding a suitable book 
-    and then forming a group from users who rated it highly.
-    This is more robust for sparse datasets.
+    Finds a test case by first picking a book with enough ratings,
+    then sampling 'group_size' users who rated it > 6.
     """
-    # Count how many ratings each book has
+    # First ensure the book has at least 'group_size' total ratings
     isbn_counts = ratings_df['ISBN'].value_counts()
-    
-    # Filter for books that have been rated by at least 5 users
-    # This increases the chance of finding a good test case.
-    viable_isbns = isbn_counts[isbn_counts >= 5].index
-    
-    # Shuffle the viable ISBNs to ensure randomness in test cases
-    shuffled_isbns = list(viable_isbns)
-    random.shuffle(shuffled_isbns)
-    
-    for isbn in shuffled_isbns:
-        # Find all users who rated this book with a score > 6
+    viable_isbns = isbn_counts[isbn_counts >= group_size].index.tolist()
+
+    random.shuffle(viable_isbns)
+
+    for isbn in viable_isbns:
+        # Users who rated this book > 6
         potential_users = ratings_df[(ratings_df['ISBN'] == isbn) & (ratings_df['Book-Rating'] > 6)]['User-ID']
-        
-        if len(potential_users) >= 3:
-            # We found a book rated highly by at least 3 people.
-            # Form a group from them.
-            group_users = random.sample(list(potential_users), 3)
+        if len(potential_users) >= group_size:
+            group_users = random.sample(list(potential_users), group_size)  # sample k distinct users
             return group_users, isbn
-            
-    return None, None # Return None if no suitable book/group is found
+
+    return None, None
+
 
 # --- Streamlit App Layout ---
 
@@ -421,6 +414,13 @@ use_memory_only = st.sidebar.checkbox(
     "Use RAG memory for user prefs (no CSV fallback)",
     value=True
 )
+group_size = st.sidebar.selectbox(
+    "Group size",
+    [3, 5, 10],
+    index=0,
+    help="How many users to include in the test group."
+)
+
 # --- Top-K control (1–20), default 10 ---
 selected_k = st.sidebar.number_input(
     "Top-K (1–20)",
@@ -456,19 +456,25 @@ ratings_df, books_df = load_data()
 ratings_df['ISBN'] = ratings_df['ISBN'].astype(str)
 books_df['ISBN']   = books_df['ISBN'].astype(str)
 
+# quick dataset stats
+n_users   = int(ratings_df['User-ID'].nunique())
+n_books   = int(books_df['ISBN'].nunique())
+n_ratings = int(len(ratings_df))
+st.sidebar.caption(f"Dataset: {n_users:,} users · {n_books:,} books · {n_ratings:,} ratings")
+
+
 if algo and ratings_df is not None and books_df is not None:
     if st.button("🚀 Run Evaluation Demo"):
 
         with st.spinner("Finding a test group and building oracle..."):
             random.seed(seed_val)        # controls Python's RNG
-            group_users, _ = find_ground_truth(ratings_df)
-
+            group_users, _ = find_ground_truth(ratings_df, group_size=group_size)
 
         if not group_users:
             st.error("Could not find a suitable test group. Please try again.")
         else:
            # --- Display run context ---
-            st.info(f"**Strategy:** `{strategy}` | **Group:** {group_users}")
+            st.info(f"**Strategy:** `{strategy}` | **Group size:** {group_size} | **Users:** {group_users}")
             train_df, test_df = split_ratings_train_test_for_group(
                 ratings_df, group_users, test_frac=0.2, seed=seed_val
             )
