@@ -17,14 +17,35 @@ def load_cf_model(model_path='svd_model.pkl'):
     with open(model_path, 'rb') as f:
         return pickle.load(f)
 
+# def load_data():
+#     """Loads the ratings and books datasets."""
+#     try:
+#         ratings_df = pd.read_csv('BX-Book-Ratings.csv', sep=';', encoding='latin-1', on_bad_lines='skip')
+#         books_df = pd.read_csv('BX-Books.csv', sep=';', encoding='latin-1', on_bad_lines='skip')
+#         return ratings_df, books_df
+#     except FileNotFoundError as e:
+#         print(f"Error: Could not find a required data file. {e}")
+#         return None, None
+@st.cache_data
 def load_data():
-    """Loads the ratings and books datasets."""
     try:
-        ratings_df = pd.read_csv('BX-Book-Ratings.csv', sep=';', encoding='latin-1', on_bad_lines='skip')
-        books_df = pd.read_csv('BX-Books.csv', sep=';', encoding='latin-1', on_bad_lines='skip')
+        ratings_df = pd.read_csv(
+            'BX-Book-Ratings.csv',
+            sep=';', encoding='latin-1', on_bad_lines='skip',
+            dtype={'User-ID': int, 'ISBN': str, 'Book-Rating': float}
+        )
+        books_df = pd.read_csv(
+            'BX-Books.csv',
+            sep=';', encoding='latin-1', on_bad_lines='skip',
+            dtype={'ISBN': str}
+        )
+        # Clean identifiers / titles
+        ratings_df['ISBN'] = ratings_df['ISBN'].astype(str).str.strip()
+        books_df['ISBN'] = books_df['ISBN'].astype(str).str.strip()
+        books_df['Book-Title'] = books_df['Book-Title'].astype(str).str.strip()
         return ratings_df, books_df
     except FileNotFoundError as e:
-        print(f"Error: Could not find a required data file. {e}")
+        st.error(f"Error: Could not find a required data file: {e}")
         return None, None
 
 # --- 2. Collaborative Filtering (Quantitative) Group Logic ---
